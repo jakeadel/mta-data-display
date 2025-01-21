@@ -1,36 +1,35 @@
-document.addEventListener("DOMContentLoaded", function() {
+const DEBUG = false;
 
-    const locations = [
-        {x: 0, y: 0},
-        {x: 100, y: 100},
-        {x: 200, y: 500},
-        {x: 300, y: 200},
-        {x: 0, y: 0}
-    ]
+function debugLog(...args) {
+    if (DEBUG) console.log(...args);
+}
 
-    const paths = [];
+document.addEventListener("DOMContentLoaded", async function() {
 
-    for (let i = 0; i < locations.length - 1; i++) {
-        const origin = locations[i];
-        const destination = locations[i + 1];
-        const pathData = templatePath(origin, destination);
-        const path = makePath("subway", pathData, i);
-        paths.push(path);
-    }
+    const response = await fetch('./tracks.min.svg');
+    const svgText = await response.text();
 
-    for (let i = 0; i < paths.length; i++) {
-        const positiveConnection = paths[(i + 1) % paths.length];
-        const negativeConnection = paths[(i - 1 + paths.length) % paths.length];
-        paths[i].addPositiveConnections({ 0: positiveConnection });
-        paths[i].addNegativeConnections({ 0: negativeConnection });
-    }
+    const container = document.getElementById("svg-container");
+    container.innerHTML = svgText;
+
+    const subway = container.querySelector("svg");
+    subway.id = "subway"; 
+
+    // maybe process paths with svgo separately to
+    // preserve connection stuff
+
+    const {pathsInput, connectionsInput} = await readInput("./mta-input.json");
+
+    let paths = createPathObjects(pathsInput);
+    addPathConnections(connectionsInput, paths);
+    console.log({paths})
 
     const trainElement = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     trainElement.setAttribute("r", 10);
     trainElement.setAttribute("fill", "red");
     document.getElementById("subway").appendChild(trainElement);
 
-    const train = new Train(0, 2, 0, 1, 0, trainElement, paths[0]);
+    const train = new Train(0, 4, 0, 1, 0, trainElement, paths[0]);
 
     function animate() {
         train.animateTrain();
@@ -38,6 +37,51 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     animate();
 });
+
+function createPathObjects(pathsInput) {
+    let paths = {};
+    for (const pathInput of pathsInput) {
+        const pathData = templatePath(pathInput.origin, pathInput.destination, pathInput.midpoint ??= false);
+        const path = makePath("subway", pathData, pathInput.id);
+        paths[pathInput.id] = path;
+    }
+    return paths;
+}
+
+function addPathConnections(connectionsInput, paths) {
+    for (const connection of connectionsInput) {
+        const [path1, end1] = connection[0];
+        const [path2, end2] = connection[1];
+
+        const path1EndPoint = paths[path1].getPointAtLength(end1 === 1 ? paths[path1].length : 0);
+        const path2EndPoint = paths[path2].getPointAtLength(end2 === 1 ? paths[path2].length : 0);
+
+        // Detect invalid connections and skip them
+        if (path1EndPoint.x !== path2EndPoint.x || path1EndPoint.y !== path2EndPoint.y) {
+            console.error(`Invalid connection: Path ${path1} (end ${end1}) does not match Path ${path2} (end ${end2})`);
+            continue;
+        }
+
+        if (end1 === 1) {
+            paths[path1].addPositiveConnections(paths[path2], end2);
+        } else {
+            paths[path1].addNegativeConnections(paths[path2], end2);
+        }
+
+        if (end2 === 1) {
+            paths[path2].addPositiveConnections(paths[path1], end1);
+        } else {
+            paths[path2].addNegativeConnections(paths[path1], end1);
+        } 
+    }
+}
+
+async function readInput(filename) {
+    const file = await fetch(filename);
+    const json = await file.json();
+    console.log({json});
+    return json;
+}
 
 function getRandomInt(max) {
   return Math.floor(Math.random() * max);
@@ -57,25 +101,37 @@ function makePath(attachToId, pathData, id) {
     if (toAttach) {
         const newPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
-        newPath.setAttribute("id", id);
+        newPath.setAttribute("id", `path-${id}`);
         newPath.setAttribute("d", pathData);
         newPath.setAttribute("stroke", "black");
         newPath.setAttribute("fill", "none");
         newPath.setAttribute("stroke-width", 4);
         toAttach.appendChild(newPath);
-        return new Path(newPath);
+
+        if (DEBUG) {
+            const length = newPath.getTotalLength();
+            const midpoint = newPath.getPointAtLength(length / 2);
+            const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            label.setAttribute("x", midpoint.x);
+            label.setAttribute("y", midpoint.y);
+            label.setAttribute("text-anchor", "middle");
+            label.setAttribute("dominant-baseline", "middle");
+            label.setAttribute("fill", "red");
+            label.setAttribute("font-size", "25");
+            label.textContent = `${id}`;
+            toAttach.appendChild(label);
+        }
+        return new Path(newPath, id);
     }
 }
 
 class Path {
-
-    // Connections go strictly from this path to the input paths in the direction specified
-    // Connections may not go the other way
-    constructor(element) {
+    constructor(element, id) {
+        this.id = id;
         this.element = element;
         this.length = element.getTotalLength();
-        this.positiveConnections = null;
-        this.negativeConnections = null;
+        this.positiveConnections = {};
+        this.negativeConnections = {};
         this.numPositiveConnections = 0;
         this.numNegativeConnections = 0;
     }
@@ -84,14 +140,14 @@ class Path {
         return this.element.getPointAtLength(location);
     }
 
-    addPositiveConnections(paths) {
-        this.positiveConnections = paths;
-        this.numPositiveConnections = Object.keys(paths).length;
+    addPositiveConnections(path, adjoiningEnd) {
+        this.positiveConnections[this.numPositiveConnections] = [path, adjoiningEnd];
+        this.numPositiveConnections += 1;
     }
 
-    addNegativeConnections(paths) {
-        this.negativeConnections = paths;
-        this.numNegativeConnections = Object.keys(paths).length;
+    addNegativeConnections(path, adjoiningEnd) {
+        this.negativeConnections[this.numNegativeConnections] = [path, adjoiningEnd];
+        this.numNegativeConnections += 1;
     }
 
     getPositiveConnection(direction) {
@@ -105,7 +161,7 @@ class Path {
         }
     }
 
-    getNegativeConnection(turnDirection) {
+    getNegativeConnection(direction) {
         if (this.numNegativeConnections === 1) {
             return this.negativeConnections[0];
         }
@@ -123,6 +179,7 @@ class Train {
         this.direction = direction;
         this.turnDirection = turnDirection;
         this.element = element;
+        console.log({element, currentPath})
         this.currentPath = currentPath;
         this.initKeyListeners();
     }
@@ -151,8 +208,15 @@ class Train {
             // Check for positive connections
             if (this.currentPath.numPositiveConnections > 0) {
                 console.log("Has a positive connection");
-                this.currentPath = this.currentPath.getPositiveConnection(this.turnDirection);
-                this.distance = 0;
+                let adjoiningEnd;
+                [this.currentPath, adjoiningEnd] = this.currentPath.getPositiveConnection(this.turnDirection);
+                if (adjoiningEnd === 1) {
+                    this.distance = this.currentPath.length;
+                    this.direction = -1;
+                }
+                else {
+                    this.distance = 0;
+                }
             }
             else {
                 this.direction = -1;
@@ -161,9 +225,17 @@ class Train {
         else if (this.distance <= 0){
             if (this.currentPath.numNegativeConnections > 0) {
                 console.log("Has a negative connection!");
-                this.currentPath = this.currentPath.getNegativeConnection(this.turnDirection);
-                this.distance = this.currentPath.length;
-
+                let adjoiningEnd;
+                [this.currentPath, adjoiningEnd] = this.currentPath.getNegativeConnection(this.turnDirection);
+                console.log(this.currentPath, {adjoiningEnd})
+                if (adjoiningEnd === 0) {
+                    this.distance = 0;
+                    this.direction = 1;
+                }
+                else {
+                    this.distance = this.currentPath.length;
+                    this.direction = -1;
+                }
             }
             else {
                 this.direction = 1;
@@ -174,7 +246,7 @@ class Train {
         this.element.setAttribute('cx', point.x);
         this.element.setAttribute('cy', point.y);
        
-        this.distance += this.speed * this.direction; // Speed of the train (increase the value for faster movement)
+        this.distance += this.speed * this.direction;
     }
 
     changeDirection(direction) {

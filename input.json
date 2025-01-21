@@ -1,0 +1,71 @@
+{
+    "pathsInput": [
+        {
+            "id": 0,
+            "type": "straight",
+            "origin": {
+                "x": 10,
+                "y": 10
+            },
+            "destination": {
+                "x": 100,
+                "y": 10
+            }
+        },
+        {
+            "id": 1,
+            "type": "straight",
+            "origin": {
+                "x": 100,
+                "y": 10
+            },
+            "destination": {
+                "x": 100,
+                "y": 100
+            }
+        },
+        {
+            "id": 2,
+            "type": "straight",
+            "origin": {
+                "x": 100,
+                "y": 100
+            },
+            "destination": {
+                "x": 10,
+                "y": 100
+            }
+        },
+        {
+            "id": 4,
+            "type": "straight",
+            "origin": {
+                "x": 100,
+                "y": 100
+            },
+            "destination": {
+                "x": 200,
+                "y": 100
+            }
+        },
+        {
+            "id": 5,
+            "type": "straight",
+            "origin": {
+                "x": 200,
+                "y": 100
+            },
+            "destination": {
+                "x": 200,
+                "y": 200
+            }
+        }
+    ],
+    "connectionsInput": [
+        [[0, 1], [1, 0]],
+        [[1, 1], [2, 0]],
+        [[1, 1], [4, 0]],
+        [[4, 1], [5, 0]],
+        [[4, 0], [2, 0]]
+    ]
+}

@@ -1,0 +1,36 @@
+{
+    "pathsInput": [
+        { "id": 0, "type": "straight", "origin": { "x": 10, "y": 10 }, "destination": { "x": 100, "y": 10 } },
+        { "id": 1, "type": "straight", "origin": { "x": 100, "y": 10 }, "destination": { "x": 100, "y": 100 } },
+        { "id": 2, "type": "straight", "origin": { "x": 100, "y": 100 }, "destination": { "x": 10, "y": 100 } },
+        { "id": 3, "type": "straight", "origin": { "x": 10, "y": 100 }, "destination": { "x": 10, "y": 10 } },
+        { "id": 4, "type": "straight", "origin": { "x": 100, "y": 10 }, "destination": { "x": 200, "y": 10 } },
+        { "id": 5, "type": "straight", "origin": { "x": 200, "y": 10 }, "destination": { "x": 200, "y": 100 } },
+        { "id": 6, "type": "straight", "origin": { "x": 200, "y": 100 }, "destination": { "x": 100, "y": 100 } },
+        { "id": 7, "type": "straight", "origin": { "x": 200, "y": 100 }, "destination": { "x": 300, "y": 100 } },
+        { "id": 8, "type": "straight", "origin": { "x": 300, "y": 100 }, "destination": { "x": 300, "y": 200 } },
+        { "id": 9, "type": "straight", "origin": { "x": 300, "y": 200 }, "destination": { "x": 200, "y": 200 } },
+        { "id": 10, "type": "straight", "origin": { "x": 200, "y": 200 }, "destination": { "x": 200, "y": 100 } },
+        { "id": 11, "type": "straight", "origin": { "x": 100, "y": 100 }, "destination": { "x": 150, "y": 150 } },
+        { "id": 12, "type": "straight", "origin": { "x": 150, "y": 150 }, "destination": { "x": 200, "y": 100 } }
+    ],
+    "connectionsInput": [
+        [[0, 1], [1, 0]],
+        [[1, 1], [2, 0]],
+        [[2, 1], [3, 0]],
+        [[2, 0], [6, 1]],
+        [[3, 1], [0, 0]],
+        [[1, 1], [4, 0]],
+        [[4, 1], [5, 0]],
+        [[5, 1], [6, 0]],
+        [[6, 1], [1, 0]],
+        [[6, 1], [7, 0]],
+        [[7, 1], [8, 0]],
+        [[8, 1], [9, 0]],
+        [[9, 1], [10, 0]],
+        [[10, 1], [6, 0]],
+        [[11, 0], [2, 1]],
+        [[11, 1], [12, 0]],
+        [[12, 1], [6, 0]]
+    ]
+}
